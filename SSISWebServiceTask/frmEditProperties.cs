@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using Microsoft.DataTransformationServices.Controls;
 using Microsoft.SqlServer.Dts.Runtime;
 using Microsoft.SqlServer.Dts.Runtime.Wrapper;
-using SSISWebServiceTask100;
 using TaskHost = Microsoft.SqlServer.Dts.Runtime.TaskHost;
 using Variable = Microsoft.SqlServer.Dts.Runtime.Variable;
 using VariableDispenser = Microsoft.SqlServer.Dts.Runtime.VariableDispenser;
@@ -44,18 +43,64 @@ namespace SSISWebServiceTask100
 
             try
             {
+
                 Cursor = Cursors.WaitCursor;
 
+                cmbServices.Items.Clear();
+                cmbMethods.Items.Clear();
+                grdParameters.Rows.Clear();
+
+                //Get URL's Service
                 cmbURL.Items.AddRange(LoadVariables("System.String").ToArray());
-                //cmbServices.Items.AddRange(LoadVariables("System.String").ToArray());
-                //cmbMethods.Items.AddRange(LoadVariables("System.String").ToArray());
-                //cmbReturnVariable.Items.AddRange(LoadVariables("System.Object").ToArray());
+
+                if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString()))
+                {
+                    cmbURL.SelectedIndexChanged -= cmbURL_SelectedIndexChanged;
+                    cmbServices.SelectedIndexChanged -= cmbServices_SelectedIndexChanged;
+                    cmbMethods.SelectedIndexChanged -= cmbMethods_SelectedIndexChanged;
+
+
+                    _wsdlHandler = new WSDLHandler(new Uri(EvaluateExpression(
+                                    _taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString(),
+                                    _taskHost.VariableDispenser).ToString()));
+
+                    cmbURL.Text = _taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString();
+
+                    //Get Services
+                    cmbServices.Items.AddRange(_wsdlHandler.AvailableServices.ToArray());
+                    cmbServices.SelectedIndex = FindStringInComboBox(cmbServices, _taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString(), -1);
+
+                    //Get Methods by service
+                    cmbMethods.Items.AddRange(_wsdlHandler.GetServiceMethods(_taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString()).ToArray());
+                    cmbMethods.SelectedIndex = FindStringInComboBox(cmbMethods, _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString(), -1);
+
+                    var webServiceMethod = from m in _wsdlHandler.WebServiceMethods
+                                           where m.Name == _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString()
+                                           select new WebServiceMethod
+                                                      {
+                                                          Name = m.Name,
+                                                          ResultType = m.ResultType
+                                                      };
+
+                    //Get returned variables))
+                    if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString()))
+                    {
+                        cmbReturnVariable.Items.AddRange(LoadVariables((webServiceMethod.FirstOrDefault()).ResultType).ToArray());
+                        cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, _taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString(), -1);
+                    }
+
+                    FillGridWithParams(_taskHost.Properties[NamedStringMembers.MAPPING_PARAMS].GetValue(_taskHost) as MappingParams);
+
+                    cmbURL.SelectedIndexChanged += cmbURL_SelectedIndexChanged;
+                    cmbServices.SelectedIndexChanged += cmbServices_SelectedIndexChanged;
+                    cmbMethods.SelectedIndexChanged += cmbMethods_SelectedIndexChanged;
+                }
 
                 Cursor = Cursors.Arrow;
             }
             catch (Exception)
             {
-
+                Cursor = Cursors.Arrow;
             }
         }
         #endregion
@@ -91,12 +136,6 @@ namespace SSISWebServiceTask100
             {
                 comboBox.Items.Add(string.Format("@[{0}::{1}]", variable.Namespace, variable.Name));
             }
-
-            //if (_isFirstLoad && _taskHost.Properties[NamedStringMembers.OUTPUT_VARIABLE] != null && _taskHost.Properties[NamedStringMembers.OUTPUT_VARIABLE].GetValue(_taskHost) != null)
-            //{
-            //    selectedText = _taskHost.Properties[NamedStringMembers.OUTPUT_VARIABLE].GetValue(_taskHost).ToString();
-            //    _isFirstLoad = false;
-            //}
 
             return comboBox;
         }
@@ -149,27 +188,6 @@ namespace SSISWebServiceTask100
         #endregion
 
         #region Events
-        private void btExpressionSource_Click(object sender, EventArgs e)
-        {
-            //using (ExpressionBuilder expressionBuilder = ExpressionBuilder.Instantiate(_taskHost.Variables, _taskHost.VariableDispenser, typeof(string), txSourceFile.Text))
-            //{
-            //    if (expressionBuilder.ShowDialog() == DialogResult.OK)
-            //    {
-            //        txSourceFile.Text = expressionBuilder.Expression;
-            //    }
-            //}
-        }
-
-        private void btExpressionDestination_Click(object sender, EventArgs e)
-        {
-            //using (ExpressionBuilder expressionBuilder = ExpressionBuilder.Instantiate(_taskHost.Variables, _taskHost.VariableDispenser, typeof(string), txDestinationFile.Text))
-            //{
-            //    if (expressionBuilder.ShowDialog() == DialogResult.OK)
-            //    {
-            //        txDestinationFile.Text = expressionBuilder.Expression;
-            //    }
-            //}
-        }
 
         private void btSave_Click(object sender, EventArgs e)
         {
@@ -214,14 +232,22 @@ namespace SSISWebServiceTask100
             grdParameters.Rows.Clear();
             Cursor = Cursors.WaitCursor;
 
+            FillGridWithParams();
+
+
+            Cursor = Cursors.Arrow;
+
+        }
+
+        private void FillGridWithParams()
+        {
             WebServiceMethodParameters webServiceMethodParameters = new WebServiceMethodParameters();
 
-            string selectedText;
             foreach (var method in _wsdlHandler.WebServiceMethods)
             {
                 if (method.Name == cmbMethods.Text)
                 {
-                    selectedText = string.Empty;
+                    string selectedText = string.Empty;
 
                     webServiceMethodParameters = method.WebServiceMethodParameters;
                     cmbReturnVariable.Items.AddRange(LoadVariables(method.ResultType, ref selectedText).Items.Cast<string>().ToList().Where(s => s.Contains("User")).ToArray());
@@ -229,10 +255,6 @@ namespace SSISWebServiceTask100
                     cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, selectedText, -1);
                 }
             }
-
-            //            WebServiceMethodParameters webServiceMethodParameters = (from m in _wsdlHandler.WebServiceMethods
-            //                                                                     where m.Name == cmbMethods.Text
-            //                                                                     select m.WebServiceMethodParameters) as WebServiceMethodParameters;
 
             if (webServiceMethodParameters != null)
                 foreach (var webServiceMethodparameter in webServiceMethodParameters)
@@ -254,14 +276,34 @@ namespace SSISWebServiceTask100
                                                        };
 
                     row.Cells["grdColVars"] = LoadVariables(webServiceMethodparameter);
-
                     row.Cells["grdColExpression"] = new DataGridViewButtonCell();
-
                 }
+        }
 
+        private void FillGridWithParams(MappingParams mappingParams)
+        {
+            if (mappingParams != null)
+                foreach (var mappingParam in mappingParams)
+                {
 
-            Cursor = Cursors.Arrow;
+                    int index = grdParameters.Rows.Add();
 
+                    DataGridViewRow row = grdParameters.Rows[index];
+
+                    row.Cells["grdColParams"] = new DataGridViewTextBoxCell
+                    {
+                        Value = mappingParam.Name,
+                        Tag = mappingParam.Name,
+                    };
+
+                    row.Cells["grdColDirection"] = new DataGridViewTextBoxCell
+                    {
+                        Value = mappingParam.Type
+                    };
+
+                    row.Cells["grdColVars"] = LoadVariables(mappingParam);
+                    row.Cells["grdColExpression"] = new DataGridViewButtonCell();
+                }
         }
 
         private void btGO_Click(object sender, EventArgs e)
@@ -278,13 +320,19 @@ namespace SSISWebServiceTask100
                 comboBoxCell.Items.Add(string.Format("@[{0}::{1}]", variable.Namespace, variable.Name));
             }
 
-            //if (_isFirstLoad && parameterInfo != null)
-            //{
-            //    if (!comboBoxCell.Items.Contains(_paramsManager[parameterInfo.Name + " = " + parameterInfo.ParameterType.FullName]))
-            //        comboBoxCell.Items.Add(_paramsManager[parameterInfo.Name + " = " + parameterInfo.ParameterType.FullName]);
+            return comboBoxCell;
+        }
 
-            //    comboBoxCell.Value = _paramsManager[parameterInfo.Name + " = " + parameterInfo.ParameterType.FullName];
-            //}
+        private DataGridViewComboBoxCell LoadVariables(MappingParam parameterInfo)
+        {
+            var comboBoxCell = new DataGridViewComboBoxCell();
+
+            foreach (Variable variable in Variables.Cast<Variable>().Where(variable => Type.GetTypeCode(Type.GetType(parameterInfo.Type)) == variable.DataType))
+            {
+                comboBoxCell.Items.Add(string.Format("@[{0}::{1}]", variable.Namespace, variable.Name));
+            }
+
+            comboBoxCell.Value = parameterInfo.Value;
 
             return comboBoxCell;
         }

@@ -44,6 +44,8 @@ namespace SSISWebServiceTask100
 
         public WebServiceMethods WebServiceMethods { get; set; }
 
+        public Type ReturnedTypeOfTheSelectedMethod { get; set; }
+
         #endregion
 
         #region .ctor
@@ -98,7 +100,6 @@ namespace SSISWebServiceTask100
 
             foreach (var methodInfo in methodInfos)
             {
-
                 WebServiceMethodParameters webServiceMethodParameters = new WebServiceMethodParameters();
                 webServiceMethodParameters.AddRange(methodInfo.GetParameters().Select(parameterInfo => new WebServiceMethodParameter
                                                                                                            {
