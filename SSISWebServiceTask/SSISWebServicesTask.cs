@@ -14,7 +14,7 @@ namespace SSISWebServiceTask100.SSIS
         DisplayName = "Dynamic WebService Task",
         UITypeName = "SSISWebServiceTask100.SSISWebServicesTaskUIInterface" +
         ",SSISWebServiceTask100," +
-        "Version=1.1.0.34," +
+        "Version=1.1.0.48," +
         "Culture=Neutral," +
         "PublicKeyToken=f9b925106ec285b7",
         IconResource = "SSISWebServiceTask100.DownloadIcon.ico",
@@ -137,35 +137,53 @@ namespace SSISWebServiceTask100.SSIS
                                                                               select EvaluateExpression(parameters.Value, variableDispenser)).ToArray());
 
                 }
+
                 if (result != null)
                 {
-                    componentEvents.FireInformation(0,
-                                "SSISWebServiceTask",
-                                string.Format("Get the Returned Value to: {0}", ReturnedValue),
-                                string.Empty,
-                                0,
-                                ref refire);
+                    if (((MappingParams)MappingParams).WithReturnValue)
+                    {
+                        componentEvents.FireInformation(0,
+                                                        "SSISWebServiceTask",
+                                                        string.Format("Get the Returned Value to: {0}", ReturnedValue),
+                                                        string.Empty,
+                                                        0,
+                                                        ref refire);
 
-                    string val = ReturnedValue.Split(new[] { "::" }, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
+                        string val = ReturnedValue.Split(new[] { "::" }, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
 
-                    componentEvents.FireInformation(0,
-                                "SSISWebServiceTask",
-                                string.Format("Get the Returned Value to {0} and convert to {1}",
-                                              val.Substring(0, val.Length - 1),
-                                              _vars[val.Substring(0, val.Length - 1)].DataType),
-                                string.Empty,
-                                0,
-                                ref refire);
+                        componentEvents.FireInformation(0,
+                                                        "SSISWebServiceTask",
+                                                        string.Format("Get the Returned Value to {0} and convert to {1}",
+                                                                      val.Substring(0, val.Length - 1),
+                                                                      _vars[val.Substring(0, val.Length - 1)].DataType),
+                                                        string.Empty,
+                                                        0,
+                                                        ref refire);
 
-                    _vars[val.Substring(0, val.Length - 1)].Value = Convert.ChangeType(result[0], _vars[val.Substring(0, val.Length - 1)].DataType);
+                        _vars[val.Substring(0, val.Length - 1)].Value = Convert.ChangeType(result[0],
+                                                                                           _vars[
+                                                                                               val.Substring(0,
+                                                                                                             val.Length -
+                                                                                                             1)].
+                                                                                               DataType);
 
-                    componentEvents.FireInformation(0,
-                                "SSISWebServiceTask",
-                                string.Format("The String Result is {0} ",
-                                              _vars[val.Substring(0, val.Length - 1)].Value),
-                                string.Empty,
-                                0,
-                                ref refire);
+                        componentEvents.FireInformation(0,
+                                                        "SSISWebServiceTask",
+                                                        string.Format("The String Result is {0} ",
+                                                                      _vars[val.Substring(0, val.Length - 1)].Value),
+                                                        string.Empty,
+                                                        0,
+                                                        ref refire);
+                    }
+                    else
+                    {
+                        componentEvents.FireInformation(0,
+                                                        "SSISWebServiceTask",
+                                                        "Execution without return or no associated return variable",
+                                                        string.Empty,
+                                                        0,
+                                                        ref refire);
+                    }
 
                 }
 

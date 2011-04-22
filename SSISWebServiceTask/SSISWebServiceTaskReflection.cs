@@ -1,17 +1,18 @@
 ﻿using System;
-using System.Data.Linq;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Text;
 using System.Web.Services;
 using System.Web.Services.Description;
+using System.Web.Services.Discovery;
 using System.Web.Services.Protocols;
 using System.Xml;
-using System.Xml.Linq;
 using System.Xml.Serialization;
 using Microsoft.CSharp;
 
@@ -22,9 +23,15 @@ namespace SSISWebServiceTask100
     {
         #region Propertis
 
+        private string _wsdlContent = string.Empty;
+
         private readonly bool _useDefaultCredentialsSetExplicitly;
-        private string wsdlContent;
-        private string _wsdlContent;
+        private static readonly List<string> AssemblyReferences = new List<string> {
+                                                                                       "System.Web.Services.dll",
+                                                                                       "System.Xml.dll",
+                                                                                       "System.Data.dll"
+                                                                                   };
+
 
         public new string Url
         {
@@ -83,12 +90,26 @@ namespace SSISWebServiceTask100
             {
                 _services.Add(type.FullName);
                 _availableTypes.Add(type.FullName, type);
+                GetServiceMethods(type.FullName);
             }
+            GetWSDL();
+            GetWebReferences();
         }
 
         #endregion
 
         #region WSDL
+
+        public string GetWSDL()
+        {
+            using (var client = new WebClient())
+            {
+                _wsdlContent = client.DownloadString(Url);
+                //client.DownloadFile(Url, @"C:\wsdl.xml");
+            }
+
+            return _wsdlContent;
+        }
 
         /// <summary>
         /// Gets the web methods.
@@ -103,7 +124,7 @@ namespace SSISWebServiceTask100
                 WebServiceMethodParameters webServiceMethodParameters = new WebServiceMethodParameters();
                 webServiceMethodParameters.AddRange(methodInfo.GetParameters().Select(parameterInfo => new WebServiceMethodParameter
                                                                                                            {
-                                                                                                               Name = parameterInfo.Name, 
+                                                                                                               Name = parameterInfo.Name,
                                                                                                                Type = parameterInfo.ParameterType.FullName
                                                                                                            }));
 
@@ -113,81 +134,13 @@ namespace SSISWebServiceTask100
                                               ResultType = methodInfo.ReturnType.ToString(),
                                               WebServiceMethodParameters = webServiceMethodParameters
                                           });
+
+                AssemblyReferences.Add((methodInfo.ReturnType).Module.Name);
+                AssemblyReferences.AddRange(from parameters in methodInfo.GetParameters()
+                                            select parameters.ParameterType.Module.ToString());
             }
 
             return WebServiceMethods;
-        }
-
-        /// <summary>
-        /// Gets the web methods. //OBSOLETE
-        /// </summary>
-        /// <returns></returns>
-        public WebServiceMethods GetWebMethods()
-        {
-            _wsdlContent = GetWSDL();
-
-            XDocument xDocument = XDocument.Parse(_wsdlContent);
-            XNamespace xNamespaceWSDL = "http://schemas.xmlsoap.org/wsdl/";
-            XNamespace xNamespace = "http://www.w3.org/2001/XMLSchema";
-
-            XElement schema = xDocument.Root
-                .Element(xNamespaceWSDL + "types")
-                .Element(xNamespace + "schema");
-
-            IEnumerable<XElement> elements = schema.Elements(xNamespace + "element");
-
-            Func<XElement, string> getName = el => el.Attribute("name").Value;
-            Func<XElement, string> getType = el => el.Attribute("type").Value;
-
-            var webServiceMethods = new WebServiceMethods();
-
-            foreach (WebServiceMethod Method in (from element in elements
-                                                 let name = getName(element)
-                                                 where name.EndsWith("Response")
-                                                 select new WebServiceMethod
-                                                 {
-                                                     Name = getName(element).Replace("Response", string.Empty),
-                                                     ResultType = getType(element.Descendants(xNamespace + "element").First())
-                                                 }))
-            {
-                var webServiceMethod = new WebServiceMethod
-                {
-                    Name = Method.Name,
-                    ResultType = Method.ResultType.Split(':')[1]
-                };
-
-                XElement method = elements.Single(el => getName(el) == webServiceMethod.Name);
-
-                IEnumerable<WebServiceMethodParameter> parameters =
-                    from par in method.Descendants(xNamespace + "element")
-                    let name = getName(par)
-                    where !name.EndsWith("Response")
-                    select new WebServiceMethodParameter
-                    {
-                        Name = getName(par),
-                        Type = getType(par).Split(':')[1]
-                    };
-
-                webServiceMethod.WebServiceMethodParameters.AddRange(parameters);
-
-                webServiceMethods.Add(webServiceMethod);
-            }
-
-            return webServiceMethods;
-        }
-
-        /// <summary>
-        /// Gets the WSDL.
-        /// </summary>
-        /// <returns></returns>
-        public string GetWSDL()
-        {
-            using (var client = new WebClient())
-            {
-                wsdlContent = client.DownloadString(Url);
-                //client.DownloadFile(Url, @"C:\wsdl.xml");
-            }
-            return wsdlContent;
         }
 
         #endregion
@@ -238,7 +191,7 @@ namespace SSISWebServiceTask100
             string serviceDescriptionName = serviceDescription.Services[0].Name;
             var serviceDescriptionImporter = new ServiceDescriptionImporter
             {
-                ProtocolName = "Soap"
+                ProtocolName = "Soap12"
             };
 
             serviceDescriptionImporter.AddServiceDescription(serviceDescription, null, null);
@@ -247,23 +200,22 @@ namespace SSISWebServiceTask100
             var codeCompileUnit = new CodeCompileUnit();
             codeCompileUnit.Namespaces.Add(codeNamespace);
 
-            ServiceDescriptionImportWarnings serviceDescriptionImportWarnings =
-                serviceDescriptionImporter.Import(codeNamespace, codeCompileUnit);
+            ServiceDescriptionImportWarnings serviceDescriptionImportWarnings = serviceDescriptionImporter.Import(codeNamespace, codeCompileUnit);
 
             object returnedObject = null;
 
             if (serviceDescriptionImportWarnings == 0)
             {
                 CodeDomProvider codeDomProvider = new CSharpCodeProvider();
+                var AssemblyReferences = new List<string>
+                    {
+                        "System.Web.Services.dll",
+                        "System.Xml.dll",
+                        "System.Data.dll"
+                    };
+                var references = AssemblyReferences.Distinct().ToArray();
 
-                var assemblyReferences = new[]
-                                             {
-                                                 "System.Web.Services.dll",
-                                                 "System.Xml.dll",
-                                                 "System.Data.dll"
-                                             };
-
-                var compilerParameters = new CompilerParameters(assemblyReferences);
+                var compilerParameters = new CompilerParameters(references);
                 CompilerResults compilerResults = codeDomProvider.CreateCompiler().CompileAssemblyFromDom(compilerParameters, codeCompileUnit);
 
                 object createInstance = compilerResults.CompiledAssembly.CreateInstance(serviceDescriptionName);
@@ -347,6 +299,35 @@ namespace SSISWebServiceTask100
             return descriptionImporter;
         }
 
+        public void GetWebReferences()
+        {
+            DiscoveryClientDocumentCollection wsdlCollection = new DiscoveryClientDocumentCollection();
+            ServiceDescription description = ServiceDescription.Read(new StringReader(_wsdlContent));
+            wsdlCollection.Add(Url, description);
+
+            CodeDomProvider provider = CodeDomProvider.CreateProvider("CSharp");
+
+            // Create a namespace and a unit for compilation.
+            CodeCompileUnit unit = new CodeCompileUnit();
+            CodeNamespace space = new CodeNamespace("eBay.Soap");
+            unit.Namespaces.Add(space);
+
+            // Create a web referernce using the WSDL collection.
+            WebReference reference = new WebReference(wsdlCollection, space) {ProtocolName = "Soap12"};
+
+            // Create a web reference collection.
+            WebReferenceCollection references = new WebReferenceCollection();
+            references.Add(reference);
+
+            WebReferenceOptions options = new WebReferenceOptions
+            {
+                Style = ServiceDescriptionImportStyle.Client,
+                CodeGenerationOptions = CodeGenerationOptions.GenerateNewAsync
+            };
+
+            StringCollection results = ServiceDescriptionImporter.GenerateWebReferences(references, provider, unit, options);
+        }
+
         /// <summary>
         /// Creates the assembly.
         /// </summary>
@@ -368,20 +349,32 @@ namespace SSISWebServiceTask100
 
             CodeDomProvider compiler = CodeDomProvider.CreateProvider("CSharp");
 
-            var references = new[]
-                                 {
-                                     "System.Web.Services.dll", 
-                                     "System.Xml.dll", 
-                                     "System.Data.dll"
-                                 };
+            //var references = AssemblyReferences.Distinct().ToArray();
 
+            //descriptionImporter.GenerateWebReferences()
+
+            
+            var AssemblyReferences = new List<string>
+                    {
+                        "System.Web.Services.dll",
+                        "System.Xml.dll",
+                        "System.Data.dll"
+                    };
+            var references = AssemblyReferences.Distinct().ToArray();
             var parameters = new CompilerParameters(references);
 
             CompilerResults results = compiler.CompileAssemblyFromDom(parameters, codeUnit);
 
             if (results.Errors.Cast<CompilerError>().Any())
             {
-                throw new Exception("Compilation Error Creating Assembly");
+                var stringBuilder = new StringBuilder();
+
+                foreach (var error in results.Errors)
+                {
+                    stringBuilder.Append(error.ToString());
+                }
+
+                throw new Exception(string.Format("Compilation Error Creating Assembly :: {0}", stringBuilder));
             }
 
             return results.CompiledAssembly;
@@ -438,3 +431,76 @@ namespace SSISWebServiceTask100
 
     #endregion
 }
+
+
+///// <summary>
+///// Gets the web methods. //OBSOLETE
+///// </summary>
+///// <returns></returns>
+//public WebServiceMethods GetWebMethods()
+//{
+//    _wsdlContent = GetWSDL();
+
+//    XDocument xDocument = XDocument.Parse(_wsdlContent);
+//    XNamespace xNamespaceWSDL = "http://schemas.xmlsoap.org/wsdl/";
+//    XNamespace xNamespace = "http://www.w3.org/2001/XMLSchema";
+
+//    XElement schema = xDocument.Root
+//        .Element(xNamespaceWSDL + "types")
+//        .Element(xNamespace + "schema");
+
+//    IEnumerable<XElement> elements = schema.Elements(xNamespace + "element");
+
+//    Func<XElement, string> getName = el => el.Attribute("name").Value;
+//    Func<XElement, string> getType = el => el.Attribute("type").Value;
+
+//    var webServiceMethods = new WebServiceMethods();
+
+//    foreach (WebServiceMethod Method in (from element in elements
+//                                         let name = getName(element)
+//                                         where name.EndsWith("Response")
+//                                         select new WebServiceMethod
+//                                         {
+//                                             Name = getName(element).Replace("Response", string.Empty),
+//                                             ResultType = getType(element.Descendants(xNamespace + "element").First())
+//                                         }))
+//    {
+//        var webServiceMethod = new WebServiceMethod
+//        {
+//            Name = Method.Name,
+//            ResultType = Method.ResultType.Split(':')[1]
+//        };
+
+//        XElement method = elements.Single(el => getName(el) == webServiceMethod.Name);
+
+//        IEnumerable<WebServiceMethodParameter> parameters =
+//            from par in method.Descendants(xNamespace + "element")
+//            let name = getName(par)
+//            where !name.EndsWith("Response")
+//            select new WebServiceMethodParameter
+//            {
+//                Name = getName(par),
+//                Type = getType(par).Split(':')[1]
+//            };
+
+//        webServiceMethod.WebServiceMethodParameters.AddRange(parameters);
+
+//        webServiceMethods.Add(webServiceMethod);
+//    }
+
+//    return webServiceMethods;
+//}
+
+///// <summary>
+///// Gets the WSDL.
+///// </summary>
+///// <returns></returns>
+//public string GetWSDL()
+//{
+//    using (var client = new WebClient())
+//    {
+//        wsdlContent = client.DownloadString(Url);
+//        //client.DownloadFile(Url, @"C:\wsdl.xml");
+//    }
+//    return wsdlContent;
+//}

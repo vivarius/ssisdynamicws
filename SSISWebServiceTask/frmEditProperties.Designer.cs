@@ -47,13 +47,6 @@
             this.lbOutputValue = new System.Windows.Forms.Label();
             this.btSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
-            this.label5 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.button1 = new System.Windows.Forms.Button();
-            this.lstReferences = new System.Windows.Forms.ListView();
-            this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             ((System.ComponentModel.ISupportInitialize)(this.grdParameters)).BeginInit();
             this.SuspendLayout();
             // 
@@ -192,7 +185,7 @@
             // 
             this.cmbReturnVariable.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbReturnVariable.FormattingEnabled = true;
-            this.cmbReturnVariable.Location = new System.Drawing.Point(93, 345);
+            this.cmbReturnVariable.Location = new System.Drawing.Point(92, 302);
             this.cmbReturnVariable.Name = "cmbReturnVariable";
             this.cmbReturnVariable.Size = new System.Drawing.Size(468, 21);
             this.cmbReturnVariable.TabIndex = 30;
@@ -200,7 +193,7 @@
             // lbOutputValue
             // 
             this.lbOutputValue.AutoSize = true;
-            this.lbOutputValue.Location = new System.Drawing.Point(13, 348);
+            this.lbOutputValue.Location = new System.Drawing.Point(12, 305);
             this.lbOutputValue.Name = "lbOutputValue";
             this.lbOutputValue.Size = new System.Drawing.Size(69, 13);
             this.lbOutputValue.TabIndex = 29;
@@ -209,7 +202,7 @@
             // btSave
             // 
             this.btSave.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.btSave.Location = new System.Drawing.Point(406, 377);
+            this.btSave.Location = new System.Drawing.Point(405, 334);
             this.btSave.Name = "btSave";
             this.btSave.Size = new System.Drawing.Size(75, 23);
             this.btSave.TabIndex = 32;
@@ -220,73 +213,18 @@
             // btnCancel
             // 
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(487, 377);
+            this.btnCancel.Location = new System.Drawing.Point(486, 334);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 31;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(13, 312);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(106, 13);
-            this.label5.TabIndex = 33;
-            this.label5.Text = "Required references:";
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(126, 308);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(417, 20);
-            this.textBox1.TabIndex = 34;
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(542, 307);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(20, 23);
-            this.button1.TabIndex = 35;
-            this.button1.Text = "...";
-            this.button1.UseVisualStyleBackColor = true;
-            // 
-            // lstReferences
-            // 
-            this.lstReferences.CheckBoxes = true;
-            this.lstReferences.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader1,
-            this.columnHeader2,
-            this.columnHeader3});
-            this.lstReferences.Location = new System.Drawing.Point(126, 312);
-            this.lstReferences.Name = "lstReferences";
-            this.lstReferences.Size = new System.Drawing.Size(417, 13);
-            this.lstReferences.TabIndex = 36;
-            this.lstReferences.UseCompatibleStateImageBehavior = false;
-            this.lstReferences.View = System.Windows.Forms.View.List;
-            // 
-            // columnHeader1
-            // 
-            this.columnHeader1.Text = "Name";
-            // 
-            // columnHeader2
-            // 
-            this.columnHeader2.Text = "Version";
-            // 
-            // columnHeader3
-            // 
-            this.columnHeader3.Text = "Processor Architecture";
-            // 
             // frmEditProperties
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(573, 405);
-            this.Controls.Add(this.lstReferences);
-            this.Controls.Add(this.button1);
-            this.Controls.Add(this.textBox1);
-            this.Controls.Add(this.label5);
+            this.ClientSize = new System.Drawing.Size(573, 369);
             this.Controls.Add(this.btSave);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.cmbReturnVariable);
@@ -332,13 +270,6 @@
         private System.Windows.Forms.Label lbOutputValue;
         private System.Windows.Forms.Button btSave;
         private System.Windows.Forms.Button btnCancel;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.ListView lstReferences;
-        private System.Windows.Forms.ColumnHeader columnHeader1;
-        private System.Windows.Forms.ColumnHeader columnHeader2;
-        private System.Windows.Forms.ColumnHeader columnHeader3;
 
     }
 }

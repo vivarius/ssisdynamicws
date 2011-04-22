@@ -24,7 +24,7 @@ namespace SSISWebServiceTask100
     [Serializable]
     public class MappingParams : List<MappingParam>
     {
-
+        public bool WithReturnValue { get; set; }
     }
 
 }

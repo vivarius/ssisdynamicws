@@ -18,6 +18,7 @@ namespace SSISWebServiceTask100
         private readonly Connections _connections;
         private bool _isFirstLoad;
         private WSDLHandler _wsdlHandler;
+        private bool _withReturnValue = true;
         #endregion
 
         #region Public Properties
@@ -52,55 +53,58 @@ namespace SSISWebServiceTask100
 
                 //Get URL's Service
                 cmbURL.Items.AddRange(LoadVariables("System.String").ToArray());
-
-                if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString()))
-                {
-                    cmbURL.SelectedIndexChanged -= cmbURL_SelectedIndexChanged;
-                    cmbServices.SelectedIndexChanged -= cmbServices_SelectedIndexChanged;
-                    cmbMethods.SelectedIndexChanged -= cmbMethods_SelectedIndexChanged;
-
-
-                    _wsdlHandler = new WSDLHandler(new Uri(EvaluateExpression(
-                                    _taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString(),
-                                    _taskHost.VariableDispenser).ToString()));
-
-                    cmbURL.Text = _taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString();
-
-                    //Get Services
-                    cmbServices.Items.AddRange(_wsdlHandler.AvailableServices.ToArray());
-                    cmbServices.SelectedIndex = FindStringInComboBox(cmbServices, _taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString(), -1);
-
-                    //Get Methods by service
-                    cmbMethods.Items.AddRange(_wsdlHandler.GetServiceMethods(_taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString()).ToArray());
-                    cmbMethods.SelectedIndex = FindStringInComboBox(cmbMethods, _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString(), -1);
-
-                    var webServiceMethod = from m in _wsdlHandler.WebServiceMethods
-                                           where m.Name == _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString()
-                                           select new WebServiceMethod
-                                                      {
-                                                          Name = m.Name,
-                                                          ResultType = m.ResultType
-                                                      };
-
-                    //Get returned variables))
-                    if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString()))
+                if (_taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost) != null)
+                    if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString()))
                     {
-                        cmbReturnVariable.Items.AddRange(LoadVariables((webServiceMethod.FirstOrDefault()).ResultType).ToArray());
-                        cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, _taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString(), -1);
+                        cmbURL.SelectedIndexChanged -= cmbURL_SelectedIndexChanged;
+                        cmbServices.SelectedIndexChanged -= cmbServices_SelectedIndexChanged;
+                        cmbMethods.SelectedIndexChanged -= cmbMethods_SelectedIndexChanged;
+
+
+                        _wsdlHandler = new WSDLHandler(new Uri(EvaluateExpression(_taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString(),
+                                                                                  _taskHost.VariableDispenser).ToString()));
+
+                        cmbURL.Text = _taskHost.Properties[NamedStringMembers.SERVICE_URL].GetValue(_taskHost).ToString();
+
+                        //Get Services
+                        cmbServices.Items.AddRange(_wsdlHandler.AvailableServices.ToArray());
+                        cmbServices.SelectedIndex = FindStringInComboBox(cmbServices, _taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString(), -1);
+
+                        //Get Methods by service
+                        cmbMethods.Items.AddRange(_wsdlHandler.GetServiceMethods(_taskHost.Properties[NamedStringMembers.SERVICE].GetValue(_taskHost).ToString()).ToArray());
+                        cmbMethods.SelectedIndex = FindStringInComboBox(cmbMethods, _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString(), -1);
+
+                        var webServiceMethod = from m in _wsdlHandler.WebServiceMethods
+                                               where m.Name == _taskHost.Properties[NamedStringMembers.WEBMETHOD].GetValue(_taskHost).ToString()
+                                               select new WebServiceMethod
+                                                          {
+                                                              Name = m.Name,
+                                                              ResultType = m.ResultType
+                                                          };
+
+                        //Get returned variables
+                        if (_taskHost.Properties[NamedStringMembers.RETURNED_VALUE] != null)
+                        {
+                            if (!string.IsNullOrEmpty(_taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString()))
+                            {
+                                cmbReturnVariable.Items.AddRange(LoadVariables((webServiceMethod.FirstOrDefault()).ResultType).ToArray());
+                                cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, _taskHost.Properties[NamedStringMembers.RETURNED_VALUE].GetValue(_taskHost).ToString(), -1);
+                            }
+                        }
+
+                        FillGridWithParams(_taskHost.Properties[NamedStringMembers.MAPPING_PARAMS].GetValue(_taskHost) as MappingParams);
+
+                        cmbURL.SelectedIndexChanged += cmbURL_SelectedIndexChanged;
+                        cmbServices.SelectedIndexChanged += cmbServices_SelectedIndexChanged;
+                        cmbMethods.SelectedIndexChanged += cmbMethods_SelectedIndexChanged;
                     }
-
-                    FillGridWithParams(_taskHost.Properties[NamedStringMembers.MAPPING_PARAMS].GetValue(_taskHost) as MappingParams);
-
-                    cmbURL.SelectedIndexChanged += cmbURL_SelectedIndexChanged;
-                    cmbServices.SelectedIndexChanged += cmbServices_SelectedIndexChanged;
-                    cmbMethods.SelectedIndexChanged += cmbMethods_SelectedIndexChanged;
-                }
 
                 Cursor = Cursors.Arrow;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
                 Cursor = Cursors.Arrow;
+                MessageBox.Show(exception.Message);
             }
         }
         #endregion
@@ -195,7 +199,12 @@ namespace SSISWebServiceTask100
             _taskHost.Properties[NamedStringMembers.SERVICE_URL].SetValue(_taskHost, cmbURL.Text);
             _taskHost.Properties[NamedStringMembers.SERVICE].SetValue(_taskHost, cmbServices.Text);
             _taskHost.Properties[NamedStringMembers.WEBMETHOD].SetValue(_taskHost, cmbMethods.Text);
-            var mappingParams = new MappingParams();
+
+            var mappingParams = new MappingParams
+                                    {
+                                        WithReturnValue = _withReturnValue
+                                    };
+
             mappingParams.AddRange(from DataGridViewRow mappingParam in grdParameters.Rows
                                    select new MappingParam
                                               {
@@ -245,15 +254,24 @@ namespace SSISWebServiceTask100
 
             foreach (var method in _wsdlHandler.WebServiceMethods)
             {
-                if (method.Name == cmbMethods.Text)
+                if (method.Name != cmbMethods.Text)
+                    continue;
+
+                string selectedText = string.Empty;
+
+                webServiceMethodParameters = method.WebServiceMethodParameters;
+                cmbReturnVariable.Items.AddRange(LoadVariables(method.ResultType, ref selectedText).Items.Cast<string>().ToList().Where(s => s.Contains("User")).ToArray());
+                cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, selectedText, -1);
+                if (method.ResultType == "System.Void")
                 {
-                    string selectedText = string.Empty;
-
-                    webServiceMethodParameters = method.WebServiceMethodParameters;
-                    cmbReturnVariable.Items.AddRange(LoadVariables(method.ResultType, ref selectedText).Items.Cast<string>().ToList().Where(s => s.Contains("User")).ToArray());
-
-                    cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, selectedText, -1);
+                    _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = false;
                 }
+                else
+                {
+                    _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                }
+
+                break;
             }
 
             if (webServiceMethodParameters != null)
@@ -303,6 +321,16 @@ namespace SSISWebServiceTask100
 
                     row.Cells["grdColVars"] = LoadVariables(mappingParam);
                     row.Cells["grdColExpression"] = new DataGridViewButtonCell();
+
+
+                    if (!mappingParams.WithReturnValue)
+                    {
+                        _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = false;
+                    }
+                    else
+                    {
+                        _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                    }
                 }
         }
 
