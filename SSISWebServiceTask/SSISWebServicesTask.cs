@@ -14,7 +14,7 @@ namespace SSISWebServiceTask100.SSIS
         DisplayName = "Dynamic WebService Task",
         UITypeName = "SSISWebServiceTask100.SSISWebServicesTaskUIInterface" +
         ",SSISWebServiceTask100," +
-        "Version=1.1.0.48," +
+        "Version=1.1.0.56," +
         "Culture=Neutral," +
         "PublicKeyToken=f9b925106ec285b7",
         IconResource = "SSISWebServiceTask100.DownloadIcon.ico",
@@ -41,6 +41,8 @@ namespace SSISWebServiceTask100.SSIS
         public object MappingParams { get; set; }
         [Category("Component specific"), Description("Output Variable")]
         public string ReturnedValue { get; set; }
+        [Category("Component specific"), Description("The method returns a value? (O/1)")]
+        public string IsValueReturned { get; set; }
         #endregion
 
         #region Private Properties
@@ -140,7 +142,7 @@ namespace SSISWebServiceTask100.SSIS
 
                 if (result != null)
                 {
-                    if (((MappingParams)MappingParams).WithReturnValue)
+                    if (IsValueReturned == "1")
                     {
                         componentEvents.FireInformation(0,
                                                         "SSISWebServiceTask",
@@ -160,12 +162,7 @@ namespace SSISWebServiceTask100.SSIS
                                                         0,
                                                         ref refire);
 
-                        _vars[val.Substring(0, val.Length - 1)].Value = Convert.ChangeType(result[0],
-                                                                                           _vars[
-                                                                                               val.Substring(0,
-                                                                                                             val.Length -
-                                                                                                             1)].
-                                                                                               DataType);
+                        _vars[val.Substring(0, val.Length - 1)].Value = Convert.ChangeType(result[0], _vars[val.Substring(0, val.Length - 1)].DataType);
 
                         componentEvents.FireInformation(0,
                                                         "SSISWebServiceTask",
@@ -441,11 +438,15 @@ namespace SSISWebServiceTask100.SSIS
             XmlAttribute returnedVariable = doc.CreateAttribute(string.Empty, NamedStringMembers.RETURNED_VALUE, string.Empty);
             returnedVariable.Value = ReturnedValue;
 
+            XmlAttribute isReturnedVariable = doc.CreateAttribute(string.Empty, NamedStringMembers.IS_VALUE_RETURNED, string.Empty);
+            isReturnedVariable.Value = IsValueReturned;
+
             taskElement.Attributes.Append(serviceUrl);
             taskElement.Attributes.Append(service);
             taskElement.Attributes.Append(webMethod);
             taskElement.Attributes.Append(mappingParams);
             taskElement.Attributes.Append(returnedVariable);
+            taskElement.Attributes.Append(isReturnedVariable);
 
             doc.AppendChild(taskElement);
         }
@@ -469,6 +470,7 @@ namespace SSISWebServiceTask100.SSIS
                 WebMethod = node.Attributes.GetNamedItem(NamedStringMembers.WEBMETHOD).Value;
                 MappingParams = Serializer.DeSerializeFromXmlString(typeof(MappingParams), node.Attributes.GetNamedItem(NamedStringMembers.MAPPING_PARAMS).Value);
                 ReturnedValue = node.Attributes.GetNamedItem(NamedStringMembers.RETURNED_VALUE).Value;
+                IsValueReturned = node.Attributes.GetNamedItem(NamedStringMembers.IS_VALUE_RETURNED).Value;
             }
             catch
             {

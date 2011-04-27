@@ -15,10 +15,8 @@ namespace SSISWebServiceTask100
     {
         #region Private Properties
         private readonly TaskHost _taskHost;
-        private readonly Connections _connections;
-        private bool _isFirstLoad;
         private WSDLHandler _wsdlHandler;
-        private bool _withReturnValue = true;
+        private int _withReturnValue = 1;
         #endregion
 
         #region Public Properties
@@ -34,13 +32,9 @@ namespace SSISWebServiceTask100
         {
             InitializeComponent();
 
-            _taskHost = taskHost;
-            _connections = connections;
+            grdParameters.DataError += grdParameters_DataError;
 
-            if (taskHost == null)
-            {
-                //throw new ArgumentNullException("taskHost");
-            }
+            _taskHost = taskHost;
 
             try
             {
@@ -99,13 +93,21 @@ namespace SSISWebServiceTask100
                         cmbMethods.SelectedIndexChanged += cmbMethods_SelectedIndexChanged;
                     }
 
-                Cursor = Cursors.Arrow;
+
             }
             catch (Exception exception)
             {
-                Cursor = Cursors.Arrow;
                 MessageBox.Show(exception.Message);
             }
+            finally
+            {
+                Cursor = Cursors.Arrow;
+            }
+        }
+
+        void grdParameters_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            throw new NotImplementedException();
         }
         #endregion
 
@@ -200,10 +202,7 @@ namespace SSISWebServiceTask100
             _taskHost.Properties[NamedStringMembers.SERVICE].SetValue(_taskHost, cmbServices.Text);
             _taskHost.Properties[NamedStringMembers.WEBMETHOD].SetValue(_taskHost, cmbMethods.Text);
 
-            var mappingParams = new MappingParams
-                                    {
-                                        WithReturnValue = _withReturnValue
-                                    };
+            var mappingParams = new MappingParams();
 
             mappingParams.AddRange(from DataGridViewRow mappingParam in grdParameters.Rows
                                    select new MappingParam
@@ -215,6 +214,7 @@ namespace SSISWebServiceTask100
 
             _taskHost.Properties[NamedStringMembers.MAPPING_PARAMS].SetValue(_taskHost, mappingParams);
             _taskHost.Properties[NamedStringMembers.RETURNED_VALUE].SetValue(_taskHost, cmbReturnVariable.Text);
+            _taskHost.Properties[NamedStringMembers.IS_VALUE_RETURNED].SetValue(_taskHost, _withReturnValue.ToString());
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -260,15 +260,21 @@ namespace SSISWebServiceTask100
                 string selectedText = string.Empty;
 
                 webServiceMethodParameters = method.WebServiceMethodParameters;
+
+                cmbReturnVariable.Items.Clear();
+
                 cmbReturnVariable.Items.AddRange(LoadVariables(method.ResultType, ref selectedText).Items.Cast<string>().ToList().Where(s => s.Contains("User")).ToArray());
                 cmbReturnVariable.SelectedIndex = FindStringInComboBox(cmbReturnVariable, selectedText, -1);
+
                 if (method.ResultType == "System.Void")
                 {
-                    _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = false;
+                    lbOutputValue.Visible = cmbReturnVariable.Visible = false;
+                    _withReturnValue = 0;
                 }
                 else
                 {
-                    _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                    lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                    _withReturnValue = 1;
                 }
 
                 break;
@@ -323,13 +329,15 @@ namespace SSISWebServiceTask100
                     row.Cells["grdColExpression"] = new DataGridViewButtonCell();
 
 
-                    if (!mappingParams.WithReturnValue)
+                    if (_withReturnValue == 0)
                     {
-                        _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = false;
+                        lbOutputValue.Visible = cmbReturnVariable.Visible = false;
+                        _withReturnValue = 0;
                     }
                     else
                     {
-                        _withReturnValue = lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                        lbOutputValue.Visible = cmbReturnVariable.Visible = true;
+                        _withReturnValue = 1;
                     }
                 }
         }
@@ -360,6 +368,7 @@ namespace SSISWebServiceTask100
                 comboBoxCell.Items.Add(string.Format("@[{0}::{1}]", variable.Namespace, variable.Name));
             }
 
+            comboBoxCell.Items.Add(parameterInfo.Value);
             comboBoxCell.Value = parameterInfo.Value;
 
             return comboBoxCell;

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace SSISWebServiceTask100
 {
@@ -10,6 +12,7 @@ namespace SSISWebServiceTask100
         public const string WEBMETHOD = "WebMethod";
         public const string MAPPING_PARAMS = "MappingParams";
         public const string RETURNED_VALUE = "ReturnedValue";
+        public const string IS_VALUE_RETURNED = "IsValueReturned";
     }
 
 
@@ -24,7 +27,5 @@ namespace SSISWebServiceTask100
     [Serializable]
     public class MappingParams : List<MappingParam>
     {
-        public bool WithReturnValue { get; set; }
     }
-
 }
