@@ -309,15 +309,17 @@ namespace SSISWebServiceTask100
 
             // Create a namespace and a unit for compilation.
             CodeCompileUnit unit = new CodeCompileUnit();
-            CodeNamespace space = new CodeNamespace("eBay.Soap");
+            CodeNamespace space = new CodeNamespace("DynamicWS.Soap");
             unit.Namespaces.Add(space);
 
             // Create a web referernce using the WSDL collection.
             WebReference reference = new WebReference(wsdlCollection, space) {ProtocolName = "Soap12"};
 
             // Create a web reference collection.
-            WebReferenceCollection references = new WebReferenceCollection();
-            references.Add(reference);
+            WebReferenceCollection references = new WebReferenceCollection
+                                                    {
+                                                        reference
+                                                    };
 
             WebReferenceOptions options = new WebReferenceOptions
             {
