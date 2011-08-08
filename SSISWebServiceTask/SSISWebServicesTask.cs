@@ -15,10 +15,10 @@ namespace SSISWebServiceTask100.SSIS
         DisplayName = "Dynamic WebService Task",
         UITypeName = "SSISWebServiceTask100.SSISWebServicesTaskUIInterface" +
         ",SSISWebServiceTask100," +
-        "Version=1.1.0.56," +
+        "Version=1.2.0.0," +
         "Culture=Neutral," +
         "PublicKeyToken=f9b925106ec285b7",
-        IconResource = "SSISWebServiceTask100.DownloadIcon.ico",
+        IconResource = "SSISWebServiceTask100.network.ico",
         TaskContact = "cosmin.vlasiu@gmail.com",
         RequiredProductLevel = DTSProductLevel.None
         )]
